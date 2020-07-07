@@ -22,6 +22,14 @@ contract FlightSuretyApp {
 
     FlightSuretyData dataContract;
 
+        // Flight status codees
+    uint8 private constant STATUS_CODE_UNKNOWN = 0;
+    uint8 private constant STATUS_CODE_ON_TIME = 10;
+    uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
+    uint8 private constant STATUS_CODE_LATE_WEATHER = 30;
+    uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
+    uint8 private constant STATUS_CODE_LATE_OTHER = 50;
+
  
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -92,11 +100,12 @@ contract FlightSuretyApp {
     */   
     function registerAirline
                             (   
+                                address airlineAddress
                             )
                             external
-                            pure
                             returns(bool success, uint256 votes)
     {
+        dataContract.registerAirline(airlineAddress);
         return (success, 0);
     }
 
@@ -310,7 +319,7 @@ contract FlightSuretyApp {
                             internal
                             returns (uint8)
     {
-        uint8 maxValue = 10;
+        uint8 maxValue = 5;
 
         // Pseudo random number...the incrementing nonce adds variation
         uint8 random = uint8(uint256(keccak256(abi.encodePacked(blockhash(block.number - nonce++), account))) % maxValue);

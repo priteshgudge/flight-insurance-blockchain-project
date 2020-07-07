@@ -17,3 +17,5 @@ module.exports = {
     }
   }
 };
+
+//// "web3": "1.0.0-beta.37",

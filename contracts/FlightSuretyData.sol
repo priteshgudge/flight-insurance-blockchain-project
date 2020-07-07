@@ -30,8 +30,7 @@ contract FlightSuretyData {
         mapping(uint256 => PassengerAmount) passengerAmounts;
 
     }
-
-       // Flight status codees
+    // Flight status codees
     uint8 private constant STATUS_CODE_UNKNOWN = 0;
     uint8 private constant STATUS_CODE_ON_TIME = 10;
     uint8 private constant STATUS_CODE_LATE_AIRLINE = 20;
@@ -63,11 +62,12 @@ contract FlightSuretyData {
     {
         contractOwner = msg.sender;
         registeredAirlinesMapping[msg.sender] = true;
-        Flight memory flight1  = Flight({isRegistered: true, flightCode: 'Flight1', passengerSize: 0,
+        authorizedCallers[msg.sender] = 1;
+        Flight memory flight1  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
             statusCode: STATUS_CODE_ON_TIME, updatedTimestamp: 1593820800, airline: msg.sender}); //  Saturday, July 4, 2020 12:00:00 AM 
-        Flight memory flight2  = Flight({isRegistered: true, flightCode: 'Flight2', passengerSize: 0,
+        Flight memory flight2  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
             statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593907200, airline: msg.sender}); //  Sunday, July 5, 2020 12:00:00 AM 
-        Flight memory flight3  = Flight({isRegistered: true, flightCode: 'Flight3', passengerSize: 0,
+        Flight memory flight3  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
             statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593993600, airline: msg.sender}); //  Monday, July 6, 2020 12:00:00 AM 
         // address airline,
                             // string memory flight,
@@ -111,9 +111,9 @@ contract FlightSuretyData {
         _;
     }
 
-    modifier requireIsFundedAirline()
+    modifier requireIsFundedAirline(address airlineAddress)
     {
-        require(airlineHasFunded[msg.sender], "Caller is not funded Airline");
+        require(airlineHasFunded[airlineAddress], "Airline is not funded");
         _;
     }
      // Define a modifier that checks if the paid amount is sufficient to cover the price
@@ -196,6 +196,7 @@ contract FlightSuretyData {
                             external
                             requireIsOperational
                             requireIsRegisteredAirline
+                            requireIsFundedAirline(airlineAddress)
     {
         // <= 4 scenario
         if(registeredAirlines.length <= 4){
@@ -242,7 +243,6 @@ contract FlightSuretyData {
                             payable
                             requireIsOperational
                             requireIsRegisteredAirline
-                            requireIsFundedAirline
                             maxValueCheck(MAX_INSURANCE_AMOUNT)
                             
     {      PassengerAmount memory pAmount = PassengerAmount({passengerAddress: msg.sender, amount: msg.value});
@@ -285,7 +285,6 @@ contract FlightSuretyData {
                             public
                             payable
                             requireIsOperational
-                            requireIsRegisteredAirline
                             paidEnough(FUNDING_AMOUNT)
     {
         airlineHasFunded[msg.sender] = true;
@@ -302,6 +301,18 @@ contract FlightSuretyData {
                         returns(bytes32) 
     {
         return keccak256(abi.encodePacked(airline, flight, timestamp));
+    }
+
+    function isAirline
+                    (
+                            address airlineAddress
+                    ) 
+                    view
+                    external
+                    requireIsAuthorizedCaller
+                    returns(bool)
+    {
+        return registeredAirlinesMapping[airlineAddress];
     }
 
     /**
