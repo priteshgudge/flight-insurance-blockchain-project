@@ -66,18 +66,6 @@ contract FlightSuretyData {
         contractOwner = msg.sender;
         registeredAirlinesMapping[msg.sender] = true;
         authorizedCallers[msg.sender] = 1;
-        Flight memory flight1  = Flight({isRegistered: true, isPayoutPending: true, flightCode: 'ND1309', passengerSize: 0,
-            statusCode: STATUS_CODE_ON_TIME, updatedTimestamp: 1593820800, airline: msg.sender}); //  Saturday, July 4, 2020 12:00:00 AM 
-        Flight memory flight2  = Flight({isRegistered: true, isPayoutPending: true, flightCode: 'ND1409', passengerSize: 0,
-            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593820800, airline: msg.sender}); //  Sunday, July 5, 2020 12:00:00 AM 
-        Flight memory flight3  = Flight({isRegistered: true,isPayoutPending: true, flightCode: 'ND1509', passengerSize: 0,
-            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593820800, airline: msg.sender}); //  Monday, July 6, 2020 12:00:00 AM 
-        // address airline,
-                            // string memory flight,
-                            // uint256 timestamp
-        flights[getFlightKey(flight1.airline, flight1.flightCode, flight1.updatedTimestamp)] = flight1;
-        flights[getFlightKey(flight2.airline, flight2.flightCode, flight2.updatedTimestamp)] = flight2;
-        flights[getFlightKey(flight3.airline, flight3.flightCode, flight3.updatedTimestamp)] = flight3;
 
     }
 
@@ -108,9 +96,9 @@ contract FlightSuretyData {
         _;
     }
 
-    modifier requireIsRegisteredAirline()
+    modifier requireIsRegisteredAirline(address airlineAddress)
     {
-        require(registeredAirlinesMapping[msg.sender], "Caller is not registered Airline");
+        require(registeredAirlinesMapping[airlineAddress], "Caller is not registered Airline");
         _;
     }
 
@@ -174,6 +162,16 @@ contract FlightSuretyData {
     {
         return operational;
     }
+    function registerFlight(string flightCode, address airline, uint256 timestamp)
+    requireIsRegisteredAirline(airline)
+    requireIsAuthorizedCaller
+    external
+    {
+
+        Flight memory flight = Flight({isRegistered: true, isPayoutPending: true, flightCode: flightCode, passengerSize: 0,
+             statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: timestamp, airline: airline});
+         flights[getFlightKey(flight.airline, flight.flightCode, flight.updatedTimestamp)] = flight;
+    }
 
 
     /**
@@ -210,11 +208,13 @@ contract FlightSuretyData {
     
     function registerAirline
                             (   
-                                address airlineAddress
+                                address airlineAddress,
+                                address requesterAirline
                             )
                             external
                             requireIsOperational
-                            requireIsRegisteredAirline
+                            requireIsAuthorizedCaller
+                            requireIsRegisteredAirline(requesterAirline)
                             requireIsFundedAirline(airlineAddress)
     {
         // <= 4 scenario
@@ -256,15 +256,19 @@ contract FlightSuretyData {
     */   
     function buy
                             (               
-                                bytes32 flightKey              
+                                address passengerAddress,
+                                 address airline,
+                                string flight,
+                                uint256 timestamp            
                             )
                             external
                             payable
                             requireIsOperational
-                            requireIsRegisteredAirline
+                            requireIsRegisteredAirline(airline)
                             maxValueCheck(MAX_INSURANCE_AMOUNT)
                             
-    {      PassengerAmount memory pAmount = PassengerAmount({passengerAddress: msg.sender, amount: msg.value});
+    {      bytes32 flightKey = getFlightKey(airline, flight, timestamp);
+            PassengerAmount memory pAmount = PassengerAmount({passengerAddress: passengerAddress, amount: msg.value});
            flights[flightKey].passengerAmounts[flights[flightKey].passengerSize] = pAmount;
            flights[flightKey].passengerSize ++;
     }
@@ -319,13 +323,14 @@ contract FlightSuretyData {
     */   
     function fund
                             (   
+                                address funderAddress
                             )
                             public
                             payable
                             requireIsOperational
                             paidEnough(FUNDING_AMOUNT)
     {
-        airlineHasFunded[msg.sender] = true;
+        airlineHasFunded[funderAddress] = true;
     }
 
     function getFlightKey
@@ -361,7 +366,7 @@ contract FlightSuretyData {
                             external 
                             payable 
     {
-        fund();
+        this.fund.value(10 ether)(contractOwner);
     }
 
 

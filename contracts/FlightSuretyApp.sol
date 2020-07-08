@@ -105,7 +105,7 @@ contract FlightSuretyApp {
                             external
                             returns(bool success, uint256 votes)
     {
-        dataContract.registerAirline(airlineAddress);
+        dataContract.registerAirline(airlineAddress, msg.sender);
         return (success, 0);
     }
 
@@ -116,10 +116,14 @@ contract FlightSuretyApp {
     */  
     function registerFlight
                                 (
+                                    string flightCode,
+                                    address airline,
+                                    uint256 timestamp
                                 )
                                 external
-                                pure
+                                
     {
+        dataContract.registerFlight(flightCode, airline, timestamp);
 
     }
     
@@ -174,6 +178,33 @@ contract FlightSuretyApp {
     {
         require(msg.sender == tx.origin, "Contracts are not allowed to withdraw");
         dataContract.pay(msg.sender);
+    }
+
+    //Buy Insurance
+    function buyInsurance
+                    (
+                        address airline,
+                        string flight,
+                        uint256 timestamp
+                    )
+                    external
+                    payable
+
+    {
+        require(msg.sender == tx.origin, "Contracts are not allowed to withdraw");
+        dataContract.buy.value(msg.value)(msg.sender, airline, flight, timestamp);
+    }
+
+        //Buy Insurance
+    function fundInsurance
+                    (
+                    )
+                    external
+                    payable
+
+    {
+        require(msg.sender == tx.origin, "Contracts are not allowed to withdraw");
+        dataContract.fund.value(msg.value)(msg.sender);
     }
 
 
