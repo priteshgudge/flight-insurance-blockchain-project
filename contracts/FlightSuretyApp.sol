@@ -135,8 +135,10 @@ contract FlightSuretyApp {
                                     uint8 statusCode
                                 )
                                 internal
-                                pure
     {
+        if(statusCode == STATUS_CODE_LATE_AIRLINE){
+            dataContract.creditInsurees(airline, flight, timestamp);
+        }
     }
 
 
@@ -161,6 +163,19 @@ contract FlightSuretyApp {
         emit OracleRequest(index, airline, flight, timestamp);
     } 
 
+    //Safelyh withdraw money
+    function safeWithdraw
+                    (
+
+                    )
+                    external
+                    payable
+
+    {
+        require(msg.sender == tx.origin, "Contracts are not allowed to withdraw");
+        dataContract.pay(msg.sender);
+    }
+
 
 // region ORACLE MANAGEMENT
 
@@ -171,7 +186,7 @@ contract FlightSuretyApp {
     uint256 public constant REGISTRATION_FEE = 1 ether;
 
     // Number of oracles that must respond for valid status
-    uint256 private constant MIN_RESPONSES = 3;
+    uint256 private constant MIN_RESPONSES = 5;
 
 
     struct Oracle {

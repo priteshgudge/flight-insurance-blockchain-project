@@ -20,6 +20,8 @@ contract FlightSuretyData {
     uint256 FUNDING_AMOUNT = 10 ether;
     uint256 MAX_INSURANCE_AMOUNT = 1 ether;
 
+    mapping(address => uint256) passengerReceivableAmount;
+
     struct Flight {
         bool isRegistered;
         uint8 statusCode;
@@ -28,6 +30,7 @@ contract FlightSuretyData {
         string flightCode;
         uint256 passengerSize;
         mapping(uint256 => PassengerAmount) passengerAmounts;
+        bool isPayoutPending;
 
     }
     // Flight status codees
@@ -63,12 +66,12 @@ contract FlightSuretyData {
         contractOwner = msg.sender;
         registeredAirlinesMapping[msg.sender] = true;
         authorizedCallers[msg.sender] = 1;
-        Flight memory flight1  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
+        Flight memory flight1  = Flight({isRegistered: true, isPayoutPending: true, flightCode: 'ND1309', passengerSize: 0,
             statusCode: STATUS_CODE_ON_TIME, updatedTimestamp: 1593820800, airline: msg.sender}); //  Saturday, July 4, 2020 12:00:00 AM 
-        Flight memory flight2  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
-            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593907200, airline: msg.sender}); //  Sunday, July 5, 2020 12:00:00 AM 
-        Flight memory flight3  = Flight({isRegistered: true, flightCode: 'ND1309', passengerSize: 0,
-            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593993600, airline: msg.sender}); //  Monday, July 6, 2020 12:00:00 AM 
+        Flight memory flight2  = Flight({isRegistered: true, isPayoutPending: true, flightCode: 'ND1409', passengerSize: 0,
+            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593820800, airline: msg.sender}); //  Sunday, July 5, 2020 12:00:00 AM 
+        Flight memory flight3  = Flight({isRegistered: true,isPayoutPending: true, flightCode: 'ND1509', passengerSize: 0,
+            statusCode: STATUS_CODE_LATE_AIRLINE, updatedTimestamp: 1593820800, airline: msg.sender}); //  Monday, July 6, 2020 12:00:00 AM 
         // address airline,
                             // string memory flight,
                             // uint256 timestamp
@@ -129,6 +132,22 @@ contract FlightSuretyData {
 
     modifier requireIsAuthorizedCaller(){
         require(authorizedCallers[msg.sender] == 1, "Caller is not authorized");
+        _;
+    }
+
+    modifier requireIsRegisteredFlight(address airline, string flight, uint256 timestamp){
+        require(flights[getFlightKey(airline, flight, timestamp)].isRegistered, "Flight is not registered");
+        _;
+    }
+
+    modifier requirePassengerPaymentQualify(address passengerAddress){
+        require(passengerReceivableAmount[passengerAddress] > 0, "Passenger does not qualify for insurance payout");
+        _;
+
+    }
+
+    modifier flightPayoutPending(address airline, string flight, uint256 timestamp){
+        require(flights[getFlightKey(airline, flight, timestamp)].isPayoutPending, "Payout is done");
         _;
     }
 
@@ -255,10 +274,20 @@ contract FlightSuretyData {
     */
     function creditInsurees
                                 (
+                                    address airline,
+                                    string flight,
+                                    uint256 timestamp
                                 )
                                 external
-                                pure
+                                requireIsRegisteredFlight(airline, flight, timestamp)
+                                flightPayoutPending(airline, flight, timestamp)
     {
+        Flight storage flightObj = flights[getFlightKey(airline, flight, timestamp)];
+        for(uint256 i; i< flightObj.passengerSize; i++){
+            PassengerAmount storage pAmount = flightObj.passengerAmounts[i];
+            passengerReceivableAmount[pAmount.passengerAddress] += (3*pAmount.amount/2); // 1.5 times
+        }
+           
     }
     
 
@@ -268,10 +297,18 @@ contract FlightSuretyData {
     */
     function pay
                             (
+            address passengerAddress
                             )
                             external
-                            pure
+                            payable
+                            requireIsAuthorizedCaller
+                            requirePassengerPaymentQualify(passengerAddress)
     {
+        
+        uint256 passengerAmount = passengerReceivableAmount[passengerAddress];
+        passengerReceivableAmount[passengerAddress] = 0;
+        passengerAddress.transfer(passengerAmount);
+
     }
 
    /**
