@@ -287,6 +287,7 @@ contract FlightSuretyData {
             PassengerAmount storage pAmount = flightObj.passengerAmounts[i];
             passengerReceivableAmount[pAmount.passengerAddress] += (3*pAmount.amount/2); // 1.5 times
         }
+        flightObj.isPayoutPending = false;
            
     }
     
